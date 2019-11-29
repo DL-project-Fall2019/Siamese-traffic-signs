@@ -332,10 +332,10 @@ def main():
     datagen.standardize(x_train)
     datagen_test.standardize(x_val)
 
-    triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen, batch_size=64, epoch_len=10000,
-                                            same_proba=0.5)
-    triple_sequence_val = TripleGenerator(x_train, y_train, generator=datagen_test, batch_size=64, epoch_len=1000,
-                                          same_proba=0.5)
+    triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen, batch_size=args.batch_size,
+                                            epoch_len=10000, same_proba=0.5)
+    triple_sequence_val = TripleGenerator(x_train, y_train, generator=datagen_test, batch_size=args.batch_size,
+                                          epoch_len=1000, same_proba=0.5)
 
     print("fit done")
 
