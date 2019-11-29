@@ -344,7 +344,8 @@ def main():
                                   epochs=args.number_of_epoch_first_step,
                                   verbose=1,
                                   validation_data=triple_sequence_val,
-                                  initial_epoch=0
+                                  initial_epoch=0,
+                                  use_multiprocessing=True
                                   )
     # save the result for analysis
     epoch = history.epoch
@@ -385,7 +386,8 @@ def main():
                                       epochs=(i + 1) * args.number_of_epoch,
                                       verbose=1,
                                       validation_data=triple_sequence_val,
-                                      initial_epoch=i * args.number_of_epoch
+                                      initial_epoch=i * args.number_of_epoch,
+                                      use_multiprocessing=True
                                       )
         # save the result for analysis
         epoch = history.epoch
