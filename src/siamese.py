@@ -112,7 +112,7 @@ class TripleGenerator(tf.keras.utils.Sequence):
                 labels.append((0, 1))
             else:
                 c = np.random.choice(self.classes_names, size=1, p=self.classes_prob)[0]
-                ia, ib = np.random.choice(self.classes_dict[c], size=2, replace=False)
+                ia, ib = np.random.choice(self.classes_dict[c], size=2, replace=True)
                 labels.append((1, 0))
             images_a.append(self.generator.random_transform(self.images[ia]))
             images_b.append(self.generator.random_transform(self.images[ib]))
