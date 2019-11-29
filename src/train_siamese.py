@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import math
 
 from src.data_generator import get_data_for_master_class
 from src.siamese import get_siamese_layers, TripleGenerator
@@ -333,9 +334,9 @@ def main():
     datagen_test.standardize(x_val)
 
     triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen, batch_size=args.batch_size,
-                                            epoch_len=10000//args.batch_size, same_proba=0.5)
+                                            epoch_len=int(math.ceil(100000/args.batch_size)), same_proba=0.5)
     triple_sequence_val = TripleGenerator(x_train, y_train, generator=datagen_test, batch_size=args.batch_size,
-                                          epoch_len=1000//args.batch_size, same_proba=0.5)
+                                          epoch_len=int(math.ceil(10000/args.batch_size)), same_proba=0.5)
 
     print("fit done")
 
