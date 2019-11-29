@@ -1,5 +1,5 @@
 import os
-from keras.preprocessing.image import load_img, img_to_array
+import tensorflow as tf
 from glob import iglob
 import numpy as np
 from math import floor
@@ -38,11 +38,11 @@ class SignDataLoader:
             for sub_class in sub_class_list:
                 for image_path in iglob(os.path.join(self.base_dir, sub_class, "*.jpg")):
                     try:
-                        img = load_img(image_path, target_size=self.images_size)
+                        img = tf.keras.preprocessing.image.load_img(image_path, target_size=self.images_size)
                     except IOError:
                         print("Unable to read file {}".format(image_path))
                         continue
-                    img = img_to_array(img)
+                    img = tf.keras.preprocessing.image.img_to_array(img)
                     if sign_class in self.classes_flip_and_rotation:
                         for transformed_image in self.apply_transform(img, self.classes_flip_and_rotation[sign_class]):
                             self.add_to_train_data(transformed_image, sign_class)
