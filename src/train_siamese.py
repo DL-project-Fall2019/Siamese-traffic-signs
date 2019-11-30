@@ -335,7 +335,7 @@ def main():
 
     triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen, batch_size=args.batch_size,
                                             epoch_len=int(math.ceil(100000/args.batch_size)), same_proba=0.5)
-    triple_sequence_val = TripleGenerator(x_train, y_train, generator=datagen_test, batch_size=args.batch_size,
+    triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
                                           epoch_len=int(math.ceil(10000/args.batch_size)), same_proba=0.5)
 
     print("fit done")
