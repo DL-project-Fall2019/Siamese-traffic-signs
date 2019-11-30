@@ -300,7 +300,7 @@ def main():
                                                                image_size=(args.input_size, args.input_size),
                                                                ignore_npz=args.ignore_npz,
                                                                out_classes=out_classes)
-    return
+
     datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         featurewise_center=True,
         featurewise_std_normalization=True,
