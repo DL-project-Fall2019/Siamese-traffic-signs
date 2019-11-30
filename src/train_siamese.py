@@ -49,12 +49,13 @@ classes = {
             #             'p22', 'p24', 'p25', 'p28', 'p4', 'p5R', 'p7L', 'p7R', 'p8', 'p15', 'pc']
         },
         "h_symmetry": [],
-        "rotation_and_flips": {"pne": ('v', 'h', 'd'),
-                               "pn": ('v', 'h', 'd'),
-                               "pnl": ('d',),
-                               "pc": ('v', 'h', 'd'),
-                               "pb": ('v', 'h', 'd'),
-                               }
+        "rotation_and_flips": {
+            # "pne": ('v', 'h', 'd'),
+            # "pn": ('v', 'h', 'd'),
+            # "pnl": ('d',),
+            # "pc": ('v', 'h', 'd'),
+            # "pb": ('v', 'h', 'd'),
+        }
     },
 }
 class_name = "RedRoundSign"
@@ -299,7 +300,7 @@ def main():
                                                                image_size=(args.input_size, args.input_size),
                                                                ignore_npz=args.ignore_npz,
                                                                out_classes=out_classes)
-
+    return
     datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         featurewise_center=True,
         featurewise_std_normalization=True,
@@ -329,7 +330,8 @@ def main():
     )
 
     datagen.fit(x_train)
-    datagen_test.fit(x_train)
+    datagen_test.mean = datagen.mean
+    datagen_test.std = datagen.std
     datagen.standardize(x_train)
     datagen_test.standardize(x_val)
 
