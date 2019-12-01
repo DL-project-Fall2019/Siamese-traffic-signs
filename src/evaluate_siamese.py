@@ -144,8 +144,8 @@ def main():
                                                                               "NASNetLarge"]))
 
     datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
-        featurewise_center=True,
-        featurewise_std_normalization=True,
+        featurewise_center=False,
+        featurewise_std_normalization=False,
         rotation_range=0,
         width_shift_range=0.0,
         height_shift_range=0.0,
@@ -158,10 +158,10 @@ def main():
     )
 
     # set values from red sign data set
-    datagen_test.mean = np.array([103.59205, 75.46247, 90.49107])
-    datagen_test.std = np.array([59.49902, 55.064148, 57.496548])
-    datagen_test.standardize(x_val)
-    datagen_test.standardize(x_train)
+    # datagen_test.mean = np.array([103.59205, 75.46247, 90.49107])
+    # datagen_test.std = np.array([59.49902, 55.064148, 57.496548])
+    # datagen_test.standardize(x_val)
+    # datagen_test.standardize(x_train)
 
     triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
                                           epoch_len=int(math.ceil(len(x_val) * 10 / args.batch_size)), same_proba=0.5)

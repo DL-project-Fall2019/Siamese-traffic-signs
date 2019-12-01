@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import math
+import json
 
 from src.data_generator import get_data_for_master_class
 from src.siamese import get_siamese_layers, TripleGenerator
@@ -302,8 +303,8 @@ def main():
                                                                out_classes=out_classes)
 
     datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-        featurewise_center=True,
-        featurewise_std_normalization=True,
+        featurewise_center=False,
+        featurewise_std_normalization=False,
         rotation_range=10,
         width_shift_range=0.1,
         height_shift_range=0.1,
@@ -315,9 +316,9 @@ def main():
         brightness_range=(0.7, 1.3),
         preprocessing_function=preprocess_input
     )
-    datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
-        featurewise_center=True,
-        featurewise_std_normalization=True,
+    datagen_val = tf.keras.preprocessing.image.ImageDataGenerator(
+        featurewise_center=False,
+        featurewise_std_normalization=False,
         rotation_range=0,
         width_shift_range=0.0,
         height_shift_range=0.0,
@@ -329,15 +330,17 @@ def main():
         preprocessing_function=preprocess_input
     )
 
-    datagen.fit(x_train)
-    datagen_test.mean = datagen.mean
-    datagen_test.std = datagen.std
-    datagen.standardize(x_train)
-    datagen_test.standardize(x_val)
+    # datagen.fit(x_train)
+    # datagen_val.mean = datagen.mean
+    # datagen_val.std = datagen.std
+    # datagen.standardize(x_train)
+    # datagen_val.standardize(x_val)
+    # with open(os.path.join(args.output_dir, "standardisation_param.json"), 'w') as j:
+    #     json.dump()
 
     triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen, batch_size=args.batch_size,
                                             epoch_len=int(math.ceil(100000/args.batch_size)), same_proba=0.5)
-    triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
+    triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_val, batch_size=args.batch_size,
                                           epoch_len=int(math.ceil(10000/args.batch_size)), same_proba=0.5)
 
     print("fit done")
@@ -409,6 +412,25 @@ def main():
         df_history = df_history.assign(**kwargs)
 
     save_results(args.output_dir, df_history)
+
+    # Evaluate training, just to be sure...
+    datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
+        featurewise_center=False,
+        featurewise_std_normalization=False,
+        rotation_range=0,
+        width_shift_range=0.0,
+        height_shift_range=0.0,
+        zoom_range=[1.0, 1.0],
+        fill_mode='nearest',
+        horizontal_flip=False,
+        vertical_flip=False,
+        brightness_range=[1.0, 1.0],
+        preprocessing_function=preprocess_input
+    )
+    triple_sequence_test = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
+                                           epoch_len=int(math.ceil(10000 / args.batch_size)), same_proba=0.5)
+
+    model.evaluate(x=triple_sequence_test, verbose=1, use_multiprocessing=True)
 
 
 if __name__ == '__main__':
