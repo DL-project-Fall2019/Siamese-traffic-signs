@@ -1,15 +1,13 @@
 import argparse
 import os
+import random
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import tensorflow as tf
-import math
 
 from src.data_generator import get_data_for_master_class
-from src.siamese import get_siamese_layers, TripleGenerator
 
 # solve plotting issues with matplotlib when no X connection is available
 matplotlib.use('Agg')
@@ -66,9 +64,15 @@ classes = {
         "merge_sign_classes": {},
         "h_symmetry": [],
         "rotation_and_flips": {},
+    },
+    "GTSDB": {
+        "signs_classes": ["{:02d}".format(i) for i in range(43)],
+        "merge_sign_classes": {},
+        "h_symmetry": [],
+        "rotation_and_flips": {},
     }
 }
-class_name = "CurveSign"
+class_name = "GTSDB"
 
 
 def main():
@@ -122,9 +126,10 @@ def main():
     mapping = {c: i for i, c in enumerate(out_classes)}
     mapping_id_to_name = {i: c for c, i in mapping.items()}
 
-    model = tf.keras.models.load_model(args.model_path)
+    print("Loading model")
+    model = tf.keras.models.load_model(args.model_path, compile=False)
+    print("Model loaded")
     model.summary()
-
     model.compile(loss='categorical_crossentropy',
                   # categorical_crossentropy with 2 labels is the same than binary_crossentropy
                   optimizer='sgd',
@@ -132,16 +137,17 @@ def main():
 
     input_size = int(model.input_shape[0][2])
 
-    x_train, y_train, x_val, y_val = get_data_for_master_class(class_name=class_name,
-                                                               mapping=mapping,
-                                                               mapping_id_to_name=mapping_id_to_name,
-                                                               rotation_and_flips=rotation_and_flips,
-                                                               data_dir=args.data_set_path,
-                                                               merge_sign_classes=merge_sign_classes,
-                                                               h_symmetry_classes=h_symmetry_classes,
-                                                               image_size=(input_size, input_size),
-                                                               ignore_npz=args.ignore_npz,
-                                                               out_classes=out_classes)
+    images, classes_array, _, _ = get_data_for_master_class(class_name=class_name,
+                                                            mapping=mapping,
+                                                            mapping_id_to_name=mapping_id_to_name,
+                                                            rotation_and_flips=rotation_and_flips,
+                                                            data_dir=args.data_set_path,
+                                                            merge_sign_classes=merge_sign_classes,
+                                                            h_symmetry_classes=h_symmetry_classes,
+                                                            image_size=(input_size, input_size),
+                                                            ignore_npz=args.ignore_npz,
+                                                            out_classes=out_classes,
+                                                            test_ratio=0.0)
 
     if args.model_name == "MobileNetV2":
         preprocess_input = tf.keras.applications.mobilenet_v2.preprocess_input
@@ -154,38 +160,95 @@ def main():
                                                                              ["MobileNetV2", "InceptionResNetV2",
                                                                               "NASNetLarge"]))
 
-    datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
-        featurewise_center=False,
-        featurewise_std_normalization=False,
-        rotation_range=0,
-        width_shift_range=0.0,
-        height_shift_range=0.0,
-        zoom_range=[1.0, 1.0],
-        fill_mode='nearest',
-        horizontal_flip=False,
-        vertical_flip=False,
-        brightness_range=[1.0, 1.0],
-        preprocessing_function=preprocess_input
-    )
-
+    # datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
+    #     featurewise_center=False,
+    #     featurewise_std_normalization=False,
+    #     rotation_range=0,
+    #     width_shift_range=0.0,
+    #     height_shift_range=0.0,
+    #     zoom_range=[1.0, 1.0],
+    #     fill_mode='nearest',
+    #     horizontal_flip=False,
+    #     vertical_flip=False,
+    #     brightness_range=[1.0, 1.0],
+    #     preprocessing_function=preprocess_input
+    # )
     # set values from red sign data set
     # datagen_test.mean = np.array([103.59205, 75.46247, 90.49107])
     # datagen_test.std = np.array([59.49902, 55.064148, 57.496548])
     # datagen_test.standardize(x_val)
-    # datagen_test.standardize(x_train)
+    # datagen_test.standardize(x_test)
+    # triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
+    #                                       epoch_len=int(math.ceil(len(x_val) * 10 / args.batch_size)), same_proba=0.5)
+    # triple_sequence_train = TripleGenerator(x_test, y_test, generator=datagen_test, batch_size=args.batch_size,
+    #                                         epoch_len=int(math.ceil(len(x_test) * 10 / args.batch_size)),
+    #                                         same_proba=0.5)
+    # print("fit done")
+    # print("Evaluating on validation split")
+    # his = model.evaluate(x=triple_sequence_val, verbose=1, use_multiprocessing=False)
+    # print(his)
+    # print("Evaluating on train split")
+    # his = model.evaluate(x=triple_sequence_train, verbose=1, use_multiprocessing=False)
+    # print(his)
 
-    triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
-                                          epoch_len=int(math.ceil(len(x_val) * 10 / args.batch_size)), same_proba=0.5)
-    triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen_test, batch_size=args.batch_size,
-                                            epoch_len=int(math.ceil(len(x_train) * 10 / args.batch_size)),
-                                            same_proba=0.5)
+    classes_dict = {}
+    for i, c in enumerate(classes_array):
+        if c not in classes_dict:
+            classes_dict[c] = []
+        classes_dict[c].append(i)
+    for c, l in classes_dict.items():
+        classes_dict[c] = np.array(l, dtype=np.int)
+    classes_names = np.array(list(classes_dict.keys()), dtype=np.int)
+    classes_prob = np.array([len(a) for a in classes_dict.values()], dtype=np.float32)
+    classes_prob /= classes_prob.sum()
 
-    print("fit done")
+    result_dir = "{}_eval".format(class_name)
+    os.makedirs(os.path.join(result_dir, "true"))
+    os.makedirs(os.path.join(result_dir, "false"))
 
-    print("Evaluating on validation split")
-    model.evaluate(x=triple_sequence_val, verbose=1, use_multiprocessing=True)
-    print("Evaluating on train split")
-    model.evaluate(x=triple_sequence_train, verbose=1, use_multiprocessing=True)
+    for b in range(int(len(images) * 10 / args.batch_size)):
+        images_a, images_b, labels = [], [], []
+        class_a, class_b = [], []
+        for i in range(args.batch_size):
+            if random.random() > 0.5:
+                ca, cb = np.random.choice(classes_names, size=2, replace=False, p=classes_prob)
+                ia = np.random.choice(classes_dict[ca], size=1)[0]
+                ib = np.random.choice(classes_dict[cb], size=1)[0]
+                labels.append((0, 1))
+                class_a.append(ca)
+                class_b.append(cb)
+            else:
+                c = np.random.choice(classes_names, size=1, p=classes_prob)[0]
+                ia, ib = np.random.choice(classes_dict[c], size=2, replace=True)
+                labels.append((1, 0))
+                class_a.append(c)
+                class_b.append(c)
+            images_a.append(preprocess_input(images[ia].copy()))
+            images_b.append(preprocess_input(images[ib].copy()))
+        images_b = np.stack(images_b)
+        images_a = np.stack(images_a)
+        labels = np.array(labels, dtype=np.int)
+
+        pred = model.predict(x=[images_a, images_b])
+
+        for i, (p, l, ia, ib, ca, cb) in enumerate(zip(pred, labels, images_a, images_b, class_a, class_b)):
+            ia = (ia + 1.0) * 127
+            ib = (ib + 1.0) * 127
+            fig = plt.figure()
+            a = fig.add_subplot(1, 2, 1)
+            plt.imshow(ia.astype(np.uint8))
+            plt.axis('off')
+            a.set_title(mapping_id_to_name[ca])
+            a = fig.add_subplot(1, 2, 2)
+            plt.imshow(ib.astype(np.uint8))
+            a.set_title(mapping_id_to_name[cb])
+            plt.suptitle("Same at {}%".format(int(p[0] * 100)))
+            plt.axis('off')
+            if (p.round() == np.array(l)).all():
+                plt.savefig(os.path.join(result_dir, "true", "{}_{}.png".format(b, i)))
+            else:
+                plt.savefig(os.path.join(result_dir, "false", "{}_{}.png".format(b, i)))
+            plt.close(fig)
 
 
 if __name__ == '__main__':

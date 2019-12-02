@@ -388,13 +388,22 @@ def main():
                       metrics=['categorical_accuracy'])
 
         # fit the model with this new freedom
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(model_save_path,
+                                  "weights.{epoch:02d}-{val_loss:.2f}-{val_categorical_accuracy:.2f}.h5"),
+            monitor="val_categorical_accuracy",
+            save_weights_only=True,
+            period=10
+        )
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_categorical_accuracy", patience=10)
         initial_epoch = args.number_of_epoch_first_step + (i - 1) * args.number_of_epoch
         history = model.fit_generator(generator=triple_sequence_train,
                                       epochs=initial_epoch + args.number_of_epoch,
                                       verbose=1,
                                       validation_data=triple_sequence_val,
                                       initial_epoch=initial_epoch,
-                                      use_multiprocessing=True
+                                      use_multiprocessing=True,
+                                      callbacks=[checkpoint, early_stopping]
                                       )
         # save the result for analysis
         epoch = history.epoch

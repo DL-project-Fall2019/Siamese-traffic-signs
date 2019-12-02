@@ -36,7 +36,7 @@ class SignDataLoader:
             except (KeyError, TypeError):
                 sub_class_list = [sign_class]
             for sub_class in sub_class_list:
-                for image_path in iglob(os.path.join(self.base_dir, sub_class, "*.jpg")):
+                for image_path in iglob(os.path.join(self.base_dir, sub_class, "*")):
                     try:
                         img = tf.keras.preprocessing.image.load_img(image_path, target_size=self.images_size)
                     except IOError:
@@ -60,7 +60,10 @@ class SignDataLoader:
             y_train += [class_id] * (len(sign_images) - test_count)
         for x in x_train + x_test:
             assert x.shape == (self.images_size[0], self.images_size[1], 3)
-        return (np.stack(x_train), np.array(y_train)), (np.stack(x_test), np.array(y_test))
+        if len(x_test) > 0:
+            return (np.stack(x_train), np.array(y_train)), (np.stack(x_test), np.array(y_test))
+        else:
+            return (np.stack(x_train), np.array(y_train)), (np.zeros(0), np.zeros(0))
 
     def apply_transform(self, img: np.ndarray, transform_list):
         if len(transform_list) == 0:
@@ -88,7 +91,8 @@ class SignDataLoader:
 
 
 def get_data_for_master_class(class_name: str, mapping, mapping_id_to_name, rotation_and_flips, data_dir: str,
-                              merge_sign_classes, h_symmetry_classes, image_size, ignore_npz: bool, out_classes):
+                              merge_sign_classes, h_symmetry_classes, image_size, ignore_npz: bool, out_classes,
+                              test_ratio: float = 0.3):
     data_file_path = "{0}/{0}.npz".format(class_name)
     if os.path.isfile(data_file_path) and not ignore_npz:
         savez = np.load(data_file_path)
@@ -103,7 +107,7 @@ def get_data_for_master_class(class_name: str, mapping, mapping_id_to_name, rota
                                      mapping=mapping,
                                      classes_flip_and_rotation=rotation_and_flips,
                                      symmetric_classes=h_symmetry_classes,
-                                     train_test_split=0.3,
+                                     train_test_split=test_ratio,
                                      classes_merge=merge_sign_classes)
         (x_train, y_train), (x_test, y_test) = data_loader.load_data()
         with open("{0}/{0}_class_counts.json".format(class_name), 'w') as count_json:
