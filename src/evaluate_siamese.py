@@ -108,6 +108,11 @@ def main():
                         default=False,
                         type=bool,
                         dest="ignore_npz")
+    parser.add_argument('-s', '--sample-count',
+                        required=False,
+                        default=None,
+                        type=int,
+                        dest="sample")
     args = parser.parse_args()
     # os.makedirs(args.output_dir, exist_ok=True)
 
@@ -203,10 +208,19 @@ def main():
     classes_prob /= classes_prob.sum()
 
     result_dir = "{}_eval".format(class_name)
-    os.makedirs(os.path.join(result_dir, "true"))
-    os.makedirs(os.path.join(result_dir, "false"))
+    os.makedirs(os.path.join(result_dir, "TP"))
+    os.makedirs(os.path.join(result_dir, "FP"))
+    os.makedirs(os.path.join(result_dir, "FN"))
+    os.makedirs(os.path.join(result_dir, "TN"))
 
-    for b in range(int(len(images) * 10 / args.batch_size)):
+    if args.sample is None:
+        sample = int(len(images) * 10 / args.batch_size)
+    else:
+        sample = args.sample
+
+    pred_list = []
+    tp_count, fn_count, fp_count, tn_count = 0, 0, 0, 0
+    for b in range(sample):
         images_a, images_b, labels = [], [], []
         class_a, class_b = [], []
         for i in range(args.batch_size):
@@ -244,11 +258,29 @@ def main():
             a.set_title(mapping_id_to_name[cb])
             plt.suptitle("Same at {}%".format(int(p[0] * 100)))
             plt.axis('off')
-            if (p.round() == np.array(l)).all():
-                plt.savefig(os.path.join(result_dir, "true", "{}_{}.png".format(b, i)))
+            if (p[0] > 0.5 and l[0] == 1) or (p[1] > 0.5 and l[1] == 1):
+                if l[0] == 1:
+                    plt.savefig(os.path.join(result_dir, "TP", "{}_{}.png".format(b, i)))
+                    tp_count += 1
+                else:
+                    plt.savefig(os.path.join(result_dir, "TN", "{}_{}.png".format(b, i)))
+                    tn_count += 1
+            elif l[0] == 1:
+                plt.savefig(os.path.join(result_dir, "FN", "{}_{}.png".format(b, i)))
+                fn_count += 1
             else:
-                plt.savefig(os.path.join(result_dir, "false", "{}_{}.png".format(b, i)))
+                plt.savefig(os.path.join(result_dir, "FP", "{}_{}.png".format(b, i)))
+                fp_count += 1
+            pred_list.append(p)
             plt.close(fig)
+
+    print("{} prediction done, {} TP, {} TN, {} FP, {} FN".format(len(pred_list), tp_count, tn_count, fp_count,
+                                                                  fn_count))
+    pred_list = np.array(pred_list)
+    print("Prediction stats:")
+    print(" avg:", pred_list.mean(axis=0))
+    print(" min:", pred_list.min(axis=0))
+    print(" max:", pred_list.max(axis=0))
 
 
 if __name__ == '__main__':

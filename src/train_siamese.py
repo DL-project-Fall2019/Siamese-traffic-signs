@@ -226,6 +226,11 @@ def main():
                         default=96,
                         type=int,
                         dest="input_size")
+    parser.add_argument('-sp', '--same-proba',
+                        required=False,
+                        default=0.5,
+                        type=float,
+                        dest="same_proba")
     args = parser.parse_args()
     if args.output_dir is not None:
         model_save_path = args.output_dir + "_models"
@@ -339,7 +344,8 @@ def main():
     #     json.dump()
 
     triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen, batch_size=args.batch_size,
-                                            epoch_len=int(math.ceil(100000/args.batch_size)), same_proba=0.5)
+                                            epoch_len=int(math.ceil(100000/args.batch_size)),
+                                            same_proba=args.same_proba)
     triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_val, batch_size=args.batch_size,
                                           epoch_len=int(math.ceil(10000/args.batch_size)), same_proba=0.5)
 
