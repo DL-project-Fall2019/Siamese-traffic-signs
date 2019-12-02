@@ -388,11 +388,12 @@ def main():
                       metrics=['categorical_accuracy'])
 
         # fit the model with this new freedom
+        initial_epoch = args.number_of_epoch_first_step + (i - 1) * args.number_of_epoch
         history = model.fit_generator(generator=triple_sequence_train,
-                                      epochs=(i + 1) * args.number_of_epoch,
+                                      epochs=initial_epoch + args.number_of_epoch,
                                       verbose=1,
                                       validation_data=triple_sequence_val,
-                                      initial_epoch=i * args.number_of_epoch,
+                                      initial_epoch=initial_epoch,
                                       use_multiprocessing=True
                                       )
         # save the result for analysis
@@ -413,24 +414,24 @@ def main():
 
     save_results(args.output_dir, df_history)
 
-    # Evaluate training, just to be sure...
-    datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
-        featurewise_center=False,
-        featurewise_std_normalization=False,
-        rotation_range=0,
-        width_shift_range=0.0,
-        height_shift_range=0.0,
-        zoom_range=[1.0, 1.0],
-        fill_mode='nearest',
-        horizontal_flip=False,
-        vertical_flip=False,
-        brightness_range=[1.0, 1.0],
-        preprocessing_function=preprocess_input
-    )
-    triple_sequence_test = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
-                                           epoch_len=int(math.ceil(10000 / args.batch_size)), same_proba=0.5)
-
-    model.evaluate(x=triple_sequence_test, verbose=1, use_multiprocessing=True)
+    # # Evaluate training, just to be sure...
+    # datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
+    #     featurewise_center=False,
+    #     featurewise_std_normalization=False,
+    #     rotation_range=0,
+    #     width_shift_range=0.0,
+    #     height_shift_range=0.0,
+    #     zoom_range=[1.0, 1.0],
+    #     fill_mode='nearest',
+    #     horizontal_flip=False,
+    #     vertical_flip=False,
+    #     brightness_range=[1.0, 1.0],
+    #     preprocessing_function=preprocess_input
+    # )
+    # triple_sequence_test = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
+    #                                        epoch_len=int(math.ceil(10000 / args.batch_size)), same_proba=0.5)
+    #
+    # model.evaluate(x=triple_sequence_test, verbose=1, use_multiprocessing=True)
 
 
 if __name__ == '__main__':

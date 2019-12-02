@@ -56,8 +56,19 @@ classes = {
                                "pb": ('v', 'h', 'd'),
                                }
     },
+    "CurveSign": {
+        "signs_classes": ["OM3-moniL", "OM3-R", "S1-1", "W10-1", "W1-10_R", "W11-2", "W11-8", "W1-1a_15_L", "W1-1_L",
+                          "W1-1_R", "W12-1", "W1-2_L", "W1-2_R", "W13-1P", "W13-1P_10", "W13-1P_15", "W13-1P_20",
+                          "W13-1P_25", "W13-1P_30", "W13-1P_35", "W13-1P_45", "W1-3_L", "W1-3_R", "W14-1", "W14-2",
+                          "W14-3", "W1-4_L", "W1-4_R", "W1-5_L", "W1-5_R", "W16-7P", "W1-6_L", "W1-6_R", "W1-7",
+                          "W1-8_L", "W1-8_R", "W2-1", "W2-2_L", "W2-2_R", "W3-1", "W3-2", "W3-3", "W4-1", "W4-1_L",
+                          "W4-1_R", "W4-2", "W4-3", "W5-2", "W6-3", "W7-1"],
+        "merge_sign_classes": {},
+        "h_symmetry": [],
+        "rotation_and_flips": {},
+    }
 }
-class_name = "RedRoundSign"
+class_name = "CurveSign"
 
 
 def main():
