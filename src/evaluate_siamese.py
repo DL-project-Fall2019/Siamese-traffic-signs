@@ -1,6 +1,8 @@
 import argparse
 import os
 import random
+import math
+import time
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -8,6 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from src.data_generator import get_data_for_master_class
+from src.siamese import TripleGenerator
 
 # solve plotting issues with matplotlib when no X connection is available
 matplotlib.use('Agg')
@@ -72,7 +75,7 @@ classes = {
         "rotation_and_flips": {},
     }
 }
-class_name = "GTSDB"
+# class_name = "GTSDB"
 
 
 def main():
@@ -113,8 +116,13 @@ def main():
                         default=None,
                         type=int,
                         dest="sample")
+    parser.add_argument('-c', '--dataset_class_name',
+                        required=True,
+                        type=str,
+                        dest="class_name")
     args = parser.parse_args()
     # os.makedirs(args.output_dir, exist_ok=True)
+    class_name = args.class_name
 
     # check dataset
     if not os.path.isdir(args.data_set_path):
@@ -142,17 +150,19 @@ def main():
 
     input_size = int(model.input_shape[0][2])
 
-    images, classes_array, _, _ = get_data_for_master_class(class_name=class_name,
-                                                            mapping=mapping,
-                                                            mapping_id_to_name=mapping_id_to_name,
-                                                            rotation_and_flips=rotation_and_flips,
-                                                            data_dir=args.data_set_path,
-                                                            merge_sign_classes=merge_sign_classes,
-                                                            h_symmetry_classes=h_symmetry_classes,
-                                                            image_size=(input_size, input_size),
-                                                            ignore_npz=args.ignore_npz,
-                                                            out_classes=out_classes,
-                                                            test_ratio=0.0)
+    x_train, y_train, x_val, y_val = get_data_for_master_class(class_name=class_name,
+                                                               mapping=mapping,
+                                                               mapping_id_to_name=mapping_id_to_name,
+                                                               rotation_and_flips=rotation_and_flips,
+                                                               data_dir=args.data_set_path,
+                                                               merge_sign_classes=merge_sign_classes,
+                                                               h_symmetry_classes=h_symmetry_classes,
+                                                               image_size=(input_size, input_size),
+                                                               ignore_npz=args.ignore_npz,
+                                                               out_classes=out_classes,
+                                                               test_ratio=0.0)
+
+    images, classes_array = x_train, y_train
 
     if args.model_name == "MobileNetV2":
         preprocess_input = tf.keras.applications.mobilenet_v2.preprocess_input
@@ -165,29 +175,29 @@ def main():
                                                                              ["MobileNetV2", "InceptionResNetV2",
                                                                               "NASNetLarge"]))
 
-    # datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
-    #     featurewise_center=False,
-    #     featurewise_std_normalization=False,
-    #     rotation_range=0,
-    #     width_shift_range=0.0,
-    #     height_shift_range=0.0,
-    #     zoom_range=[1.0, 1.0],
-    #     fill_mode='nearest',
-    #     horizontal_flip=False,
-    #     vertical_flip=False,
-    #     brightness_range=[1.0, 1.0],
-    #     preprocessing_function=preprocess_input
-    # )
+    datagen_test = tf.keras.preprocessing.image.ImageDataGenerator(
+        featurewise_center=False,
+        featurewise_std_normalization=False,
+        rotation_range=0,
+        width_shift_range=0.0,
+        height_shift_range=0.0,
+        zoom_range=[1.0, 1.0],
+        fill_mode='nearest',
+        horizontal_flip=False,
+        vertical_flip=False,
+        brightness_range=[1.0, 1.0],
+        preprocessing_function=preprocess_input
+    )
     # set values from red sign data set
     # datagen_test.mean = np.array([103.59205, 75.46247, 90.49107])
     # datagen_test.std = np.array([59.49902, 55.064148, 57.496548])
     # datagen_test.standardize(x_val)
     # datagen_test.standardize(x_test)
-    # triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
-    #                                       epoch_len=int(math.ceil(len(x_val) * 10 / args.batch_size)), same_proba=0.5)
-    # triple_sequence_train = TripleGenerator(x_test, y_test, generator=datagen_test, batch_size=args.batch_size,
-    #                                         epoch_len=int(math.ceil(len(x_test) * 10 / args.batch_size)),
-    #                                         same_proba=0.5)
+    triple_sequence_val = TripleGenerator(x_val, y_val, generator=datagen_test, batch_size=args.batch_size,
+                                          epoch_len=int(math.ceil(len(x_val) * 10 / args.batch_size)), same_proba=0.5)
+    triple_sequence_train = TripleGenerator(x_train, y_train, generator=datagen_test, batch_size=args.batch_size,
+                                            epoch_len=int(math.ceil(len(x_train) * 10 / args.batch_size)),
+                                            same_proba=0.5)
     # print("fit done")
     # print("Evaluating on validation split")
     # his = model.evaluate(x=triple_sequence_val, verbose=1, use_multiprocessing=False)
@@ -218,69 +228,45 @@ def main():
     else:
         sample = args.sample
 
-    pred_list = []
+    # pred_list = []
+    loop_time = 0
     tp_count, fn_count, fp_count, tn_count = 0, 0, 0, 0
     for b in range(sample):
-        images_a, images_b, labels = [], [], []
-        class_a, class_b = [], []
-        for i in range(args.batch_size):
-            if random.random() > 0.5:
-                ca, cb = np.random.choice(classes_names, size=2, replace=False, p=classes_prob)
-                ia = np.random.choice(classes_dict[ca], size=1)[0]
-                ib = np.random.choice(classes_dict[cb], size=1)[0]
-                labels.append((0, 1))
-                class_a.append(ca)
-                class_b.append(cb)
-            else:
-                c = np.random.choice(classes_names, size=1, p=classes_prob)[0]
-                ia, ib = np.random.choice(classes_dict[c], size=2, replace=True)
-                labels.append((1, 0))
-                class_a.append(c)
-                class_b.append(c)
-            images_a.append(preprocess_input(images[ia].copy()))
-            images_b.append(preprocess_input(images[ib].copy()))
-        images_b = np.stack(images_b)
-        images_a = np.stack(images_a)
-        labels = np.array(labels, dtype=np.int)
+        new_time = time.time()
+        left = int((sample - b) * (new_time - loop_time))
+        print("batch: {:5d}/{:d}  ETA: {:d} min {:02d} s        ".format(b, sample, left // 60, left % 60), end="\r")
+        loop_time = new_time
+        (images_a, images_b), labels = triple_sequence_train.__getitem__(b)
 
         pred = model.predict(x=[images_a, images_b])
 
-        for i, (p, l, ia, ib, ca, cb) in enumerate(zip(pred, labels, images_a, images_b, class_a, class_b)):
-            ia = (ia + 1.0) * 127
-            ib = (ib + 1.0) * 127
+        for i, (p, l, ia, ib) in enumerate(zip(pred, labels, images_a, images_b)):
             fig = plt.figure()
-            a = fig.add_subplot(1, 2, 1)
+            fig.add_subplot(1, 2, 1)
             plt.imshow(ia.astype(np.uint8))
             plt.axis('off')
-            a.set_title(mapping_id_to_name[ca])
-            a = fig.add_subplot(1, 2, 2)
+            fig.add_subplot(1, 2, 2)
             plt.imshow(ib.astype(np.uint8))
-            a.set_title(mapping_id_to_name[cb])
             plt.suptitle("Same at {}%".format(int(p[0] * 100)))
             plt.axis('off')
             if (p[0] > 0.5 and l[0] == 1) or (p[1] > 0.5 and l[1] == 1):
                 if l[0] == 1:
-                    plt.savefig(os.path.join(result_dir, "TP", "{}_{}.png".format(b, i)))
+                    plt.savefig(os.path.join(result_dir, "TP", "{}_{}.png".format(b, i)), bbox_inches='tight')
                     tp_count += 1
                 else:
-                    plt.savefig(os.path.join(result_dir, "TN", "{}_{}.png".format(b, i)))
+                    plt.savefig(os.path.join(result_dir, "TN", "{}_{}.png".format(b, i)), bbox_inches='tight')
                     tn_count += 1
             elif l[0] == 1:
-                plt.savefig(os.path.join(result_dir, "FN", "{}_{}.png".format(b, i)))
+                plt.savefig(os.path.join(result_dir, "FN", "{}_{}.png".format(b, i)), bbox_inches='tight')
                 fn_count += 1
             else:
-                plt.savefig(os.path.join(result_dir, "FP", "{}_{}.png".format(b, i)))
+                plt.savefig(os.path.join(result_dir, "FP", "{}_{}.png".format(b, i)), bbox_inches='tight')
                 fp_count += 1
-            pred_list.append(p)
             plt.close(fig)
 
-    print("{} prediction done, {} TP, {} TN, {} FP, {} FN".format(len(pred_list), tp_count, tn_count, fp_count,
-                                                                  fn_count))
-    pred_list = np.array(pred_list)
-    print("Prediction stats:")
-    print(" avg:", pred_list.mean(axis=0))
-    print(" min:", pred_list.min(axis=0))
-    print(" max:", pred_list.max(axis=0))
+    print()
+    print("{} prediction done, {} TP, {} TN, {} FP, {} FN".format(sample * args.batch_size, tp_count, tn_count,
+                                                                  fp_count, fn_count))
 
 
 if __name__ == '__main__':
